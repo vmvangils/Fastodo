@@ -10,9 +10,13 @@ export const useTodoData = (folderId?: string) => {
   
   let filteredTasks = folderId ? getTasksByFolder(folderId) : tasks;
   
-  // Apply completion filter
+  // Apply completion filter - fixed implementation
   if (filterCompleted !== null) {
-    filteredTasks = filteredTasks.filter(task => task.completed === filterCompleted);
+    filteredTasks = filteredTasks.filter(task => {
+      // If filterCompleted is false, show only active (non-completed) tasks
+      // If filterCompleted is true, show only completed tasks
+      return task.completed === filterCompleted;
+    });
   }
   
   // Apply sorting

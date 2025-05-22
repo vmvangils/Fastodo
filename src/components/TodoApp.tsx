@@ -10,12 +10,13 @@ import FolderItem from '@/components/Folder';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTodoData } from '@/hooks/useTodoData';
 import { useTodo } from '@/context/TodoContext';
+import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { 
   Plus, 
   FolderPlus,
   SunMoon, 
-  CalendarDays,
+  LogOut,
   ArrowDownUp,
 } from 'lucide-react';
 import {
@@ -34,7 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const TodoApp = () => {
-  const { addFolder } = useTodo();
+  const { addFolder, loading: todoLoading } = useTodo();
+  const { user, signOut } = useAuth();
   const [selectedFolder, setSelectedFolder] = useState<string>('default');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
@@ -71,38 +73,53 @@ const TodoApp = () => {
   
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <header className="border-b py-4 px-6 sticky top-0 bg-background z-10 shadow-sm">
+      <header className="border-b py-5 px-8 sticky top-0 bg-background z-10 shadow-sm">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
-            <SunMoon className="h-6 w-6 text-primary mr-2" />
-            <h1 className="font-handwriting text-3xl">Fastodo</h1>
+            <SunMoon className="h-7 w-7 text-primary mr-3" />
+            <h1 className="font-handwriting text-4xl">Fastodo</h1>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <div className="font-handwriting text-xl mr-2">
+          <div className="flex items-center space-x-3">
+            {user && (
+              <div className="text-sm mr-3">
+                {user.email}
+              </div>
+            )}
+            <div className="font-handwriting text-2xl mr-3">
               {format(today, 'MMM d')}
             </div>
             <ThemeToggle />
+            {user && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={signOut} 
+                title="Sign out"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
       
-      <main className="flex-grow container mx-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
+      <main className="flex-grow container mx-auto p-6 md:p-8 flex flex-col md:flex-row gap-8">
         {/* Sidebar */}
-        <div className="w-full md:w-64 space-y-4">
+        <div className="w-full md:w-72 space-y-5">
           <div className="flex justify-between items-center">
-            <h2 className="font-handwriting text-xl">Folders</h2>
+            <h2 className="font-handwriting text-2xl">Folders</h2>
             <Button 
               size="sm" 
               variant="ghost" 
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0"
               onClick={() => setFolderModalOpen(true)}
             >
-              <FolderPlus className="h-5 w-5" />
+              <FolderPlus className="h-6 w-6" />
             </Button>
           </div>
           
-          <div className="space-y-1 max-h-[300px] overflow-auto pr-2">
+          <div className="space-y-2 max-h-[350px] overflow-auto pr-2">
             {folders.map((folder) => (
               <FolderItem 
                 key={folder.id} 
@@ -113,16 +130,16 @@ const TodoApp = () => {
             ))}
           </div>
           
-          <Separator />
+          <Separator className="my-5" />
           
-          <div className="space-y-2">
-            <h2 className="font-handwriting text-xl">Filter</h2>
-            <Card className="p-3">
-              <div className="space-y-2">
+          <div className="space-y-3">
+            <h2 className="font-handwriting text-2xl">Filter</h2>
+            <Card className="p-4">
+              <div className="space-y-3">
                 <Button 
                   variant={filterCompleted === null ? "default" : "outline"}
                   size="sm"
-                  className="w-full justify-start"
+                  className="w-full justify-start text-base py-5"
                   onClick={() => setFilterCompleted(null)}
                 >
                   All
@@ -130,7 +147,7 @@ const TodoApp = () => {
                 <Button 
                   variant={filterCompleted === false ? "default" : "outline"}
                   size="sm"
-                  className="w-full justify-start"
+                  className="w-full justify-start text-base py-5"
                   onClick={() => setFilterCompleted(false)}
                 >
                   Active
@@ -138,7 +155,7 @@ const TodoApp = () => {
                 <Button 
                   variant={filterCompleted === true ? "default" : "outline"}
                   size="sm"
-                  className="w-full justify-start"
+                  className="w-full justify-start text-base py-5"
                   onClick={() => setFilterCompleted(true)}
                 >
                   Completed
@@ -149,29 +166,29 @@ const TodoApp = () => {
         </div>
         
         {/* Main Content */}
-        <div className="flex-grow space-y-4">
+        <div className="flex-grow space-y-5">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="font-handwriting text-3xl">
+              <h1 className="font-handwriting text-4xl">
                 {currentFolder ? currentFolder.name : 'Tasks'}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base text-muted-foreground mt-1">
                 What's your plan for today?
               </p>
             </div>
             
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
               <Input 
                 placeholder="Search tasks..." 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto text-base py-6"
               />
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" title="Sort">
-                    <ArrowDownUp className="h-4 w-4" />
+                  <Button variant="outline" size="icon" title="Sort" className="h-12 w-12">
+                    <ArrowDownUp className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -202,14 +219,20 @@ const TodoApp = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               
-              <Button onClick={() => setTaskModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Add Task
+              <Button onClick={() => setTaskModalOpen(true)} className="text-base py-6 px-6">
+                <Plus className="h-5 w-5 mr-2" /> Add Task
               </Button>
             </div>
           </div>
           
-          <div className="bg-card rounded-lg p-4 shadow-sm">
-            <TaskList tasks={searchedTasks} />
+          <div className="bg-card rounded-lg p-5 shadow-sm">
+            {todoLoading ? (
+              <div className="text-center py-10 text-muted-foreground">
+                Loading your tasks...
+              </div>
+            ) : (
+              <TaskList tasks={searchedTasks} />
+            )}
           </div>
         </div>
       </main>
@@ -248,9 +271,9 @@ const TodoApp = () => {
         </DialogContent>
       </Dialog>
       
-      <footer className="border-t py-4 px-6">
+      <footer className="border-t py-5 px-8">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Fastodo • Organize your day with ease</p>
+          <p>Fastodo - made by Vasco van Gils</p>
         </div>
       </footer>
     </div>

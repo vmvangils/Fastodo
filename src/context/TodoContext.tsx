@@ -1,19 +1,23 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task, Folder, Priority } from '@/types/types';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 interface TodoContextType {
   tasks: Task[];
   folders: Folder[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  updateTask: (id: string, task: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleComplete: (id: string) => void;
-  addFolder: (name: string, color?: string) => void;
-  updateFolder: (id: string, name: string, color?: string) => void;
-  deleteFolder: (id: string) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => Promise<void>;
+  updateTask: (id: string, task: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  toggleComplete: (id: string) => Promise<void>;
+  addFolder: (name: string, color?: string) => Promise<void>;
+  updateFolder: (id: string, name: string, color?: string) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
   getTasksByFolder: (folderId: string) => Task[];
+  loading: boolean;
 }
 
 const TodoContext = createContext<TodoContextType | null>(null);
@@ -31,82 +35,338 @@ interface TodoProviderProps {
 }
 
 export const TodoProvider = ({ children }: TodoProviderProps) => {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Welcome to Fastodo!',
-      description: 'This is your first task. Try marking it as complete!',
-      completed: false,
-      dueDate: new Date(),
-      priority: 'medium',
-      folderId: 'default',
-      createdAt: new Date(),
-    },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const [folders, setFolders] = useState<Folder[]>([
-    { id: 'default', name: 'My Tasks' },
-    { id: 'work', name: 'Work' },
-    { id: 'personal', name: 'Personal' },
-  ]);
+  // Fetch data when user changes
+  useEffect(() => {
+    if (!user) {
+      setTasks([]);
+      setFolders([]);
+      setLoading(false);
+      return;
+    }
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: uuidv4(),
-      createdAt: new Date(),
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch folders
+        const { data: folderData, error: folderError } = await supabase
+          .from('folders')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (folderError) throw folderError;
+
+        // Create default folders if none exist
+        if (folderData.length === 0) {
+          const defaultFolders = [
+            { id: 'default', name: 'My Tasks' },
+            { id: 'work', name: 'Work' },
+            { id: 'personal', name: 'Personal' },
+          ];
+
+          for (const folder of defaultFolders) {
+            await supabase.from('folders').insert({
+              name: folder.name,
+              user_id: user.id,
+            });
+          }
+
+          // Fetch folders again after creating defaults
+          const { data: refreshedFolders } = await supabase
+            .from('folders')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+          if (refreshedFolders) {
+            setFolders(refreshedFolders.map(f => ({
+              id: f.id,
+              name: f.name,
+              color: f.color || undefined,
+            })));
+          }
+        } else {
+          // Use fetched folders
+          setFolders(folderData.map(f => ({
+            id: f.id,
+            name: f.name,
+            color: f.color || undefined,
+          })));
+        }
+
+        // Fetch tasks
+        const { data: taskData, error: taskError } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (taskError) throw taskError;
+
+        // Create a welcome task if no tasks exist
+        if (taskData.length === 0 && folders.length > 0) {
+          const firstFolderId = folders[0]?.id || 'default';
+          
+          await supabase.from('tasks').insert({
+            title: 'Welcome to Fastodo!',
+            description: 'This is your first task. Try marking it as complete!',
+            completed: false,
+            due_date: new Date().toISOString(),
+            priority: 'medium',
+            folder_id: firstFolderId,
+            user_id: user.id,
+          });
+
+          // Fetch tasks again after creating welcome task
+          const { data: refreshedTasks } = await supabase
+            .from('tasks')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (refreshedTasks) {
+            setTasks(refreshedTasks.map(t => ({
+              id: t.id,
+              title: t.title,
+              description: t.description || '',
+              completed: t.completed || false,
+              dueDate: t.due_date ? new Date(t.due_date) : null,
+              priority: (t.priority as Priority) || 'medium',
+              folderId: t.folder_id,
+              createdAt: new Date(t.created_at),
+            })));
+          }
+        } else {
+          // Use fetched tasks
+          setTasks(taskData.map(t => ({
+            id: t.id,
+            title: t.title,
+            description: t.description || '',
+            completed: t.completed || false,
+            dueDate: t.due_date ? new Date(t.due_date) : null,
+            priority: (t.priority as Priority) || 'medium',
+            folderId: t.folder_id,
+            createdAt: new Date(t.created_at),
+          })));
+        }
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to load your tasks');
+      } finally {
+        setLoading(false);
+      }
     };
-    setTasks((prev) => [...prev, newTask]);
+
+    fetchData();
+  }, [user]);
+
+  const addTask = async (task: Omit<Task, 'id' | 'createdAt'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: task.title,
+          description: task.description,
+          completed: task.completed,
+          due_date: task.dueDate?.toISOString(),
+          priority: task.priority,
+          folder_id: task.folderId,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newTask: Task = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        completed: data.completed || false,
+        dueDate: data.due_date ? new Date(data.due_date) : null,
+        priority: (data.priority as Priority) || 'medium',
+        folderId: data.folder_id,
+        createdAt: new Date(data.created_at),
+      };
+
+      setTasks((prev) => [newTask, ...prev]);
+      toast.success('Task added successfully');
+    } catch (error: any) {
+      console.error('Error adding task:', error);
+      toast.error('Failed to add task');
+    }
   };
 
-  const updateTask = (id: string, updatedTask: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, ...updatedTask } : task))
-    );
+  const updateTask = async (id: string, updatedTask: Partial<Task>) => {
+    if (!user) return;
+
+    try {
+      const updates: any = {};
+      if (updatedTask.title !== undefined) updates.title = updatedTask.title;
+      if (updatedTask.description !== undefined) updates.description = updatedTask.description;
+      if (updatedTask.completed !== undefined) updates.completed = updatedTask.completed;
+      if (updatedTask.dueDate !== undefined) updates.due_date = updatedTask.dueDate?.toISOString();
+      if (updatedTask.priority !== undefined) updates.priority = updatedTask.priority;
+      if (updatedTask.folderId !== undefined) updates.folder_id = updatedTask.folderId;
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, ...updatedTask } : task))
+      );
+      toast.success('Task updated successfully');
+    } catch (error: any) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+  const deleteTask = async (id: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      toast.success('Task deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
   };
 
-  const toggleComplete = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const toggleComplete = async (id: string) => {
+    if (!user) return;
+
+    try {
+      const task = tasks.find((t) => t.id === id);
+      if (!task) return;
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !task.completed })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id ? { ...task, completed: !task.completed } : task
+        )
+      );
+    } catch (error: any) {
+      console.error('Error toggling task completion:', error);
+      toast.error('Failed to update task');
+    }
   };
 
-  const addFolder = (name: string, color?: string) => {
-    const newFolder: Folder = {
-      id: uuidv4(),
-      name,
-      color,
-    };
-    setFolders((prev) => [...prev, newFolder]);
+  const addFolder = async (name: string, color?: string) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('folders')
+        .insert({
+          name,
+          color,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newFolder: Folder = {
+        id: data.id,
+        name: data.name,
+        color: data.color || undefined,
+      };
+
+      setFolders((prev) => [...prev, newFolder]);
+      toast.success('Folder created successfully');
+    } catch (error: any) {
+      console.error('Error adding folder:', error);
+      toast.error('Failed to create folder');
+    }
   };
 
-  const updateFolder = (id: string, name: string, color?: string) => {
-    setFolders((prev) =>
-      prev.map((folder) =>
-        folder.id === id ? { ...folder, name, color } : folder
-      )
-    );
+  const updateFolder = async (id: string, name: string, color?: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('folders')
+        .update({ name, color })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === id ? { ...folder, name, color } : folder
+        )
+      );
+      toast.success('Folder updated successfully');
+    } catch (error: any) {
+      console.error('Error updating folder:', error);
+      toast.error('Failed to update folder');
+    }
   };
 
-  const deleteFolder = (id: string) => {
-    // Don't delete if it's the default folder
-    if (id === 'default') return;
-    
-    // Delete the folder
-    setFolders((prev) => prev.filter((folder) => folder.id !== id));
-    
-    // Move tasks from the deleted folder to default
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.folderId === id ? { ...task, folderId: 'default' } : task
-      )
-    );
+  const deleteFolder = async (id: string) => {
+    if (!user || id === 'default') return;
+
+    try {
+      // Get the default folder
+      const defaultFolder = folders.find(f => f.name === 'My Tasks') || folders[0];
+      
+      if (!defaultFolder) {
+        toast.error('Cannot delete folder: No default folder exists');
+        return;
+      }
+
+      // Update tasks to move them to default folder
+      const { error: taskUpdateError } = await supabase
+        .from('tasks')
+        .update({ folder_id: defaultFolder.id })
+        .eq('folder_id', id);
+
+      if (taskUpdateError) throw taskUpdateError;
+
+      // Delete the folder
+      const { error: folderDeleteError } = await supabase
+        .from('folders')
+        .delete()
+        .eq('id', id);
+
+      if (folderDeleteError) throw folderDeleteError;
+
+      // Update state
+      setFolders((prev) => prev.filter((folder) => folder.id !== id));
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.folderId === id ? { ...task, folderId: defaultFolder.id } : task
+        )
+      );
+      
+      toast.success('Folder deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting folder:', error);
+      toast.error('Failed to delete folder');
+    }
   };
 
   const getTasksByFolder = (folderId: string) => {
@@ -126,6 +386,7 @@ export const TodoProvider = ({ children }: TodoProviderProps) => {
         updateFolder,
         deleteFolder,
         getTasksByFolder,
+        loading,
       }}
     >
       {children}
