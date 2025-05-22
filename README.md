@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
 
-## Project info
+# Final exam 
+# Vasco van Gils
+# 9018921@student.zadkine.nl
 
-**URL**: https://lovable.dev/projects/a99137b9-1899-48ee-beb4-aebe39f54a4e
+**This is a TypeTest, using an custom made API to generate random words. This "Test" will show you how fast you can type a minute (WPM = Words Per Minute).**
 
-## How can I edit this code?
+## How it's made:
+**Tech used:**
 
-There are several ways of editing your application.
+Express.js for the backend, React.js for the frontend, it's written in Typescript. As database XAMPP with MySQL is used. For the API, Postman API is used.
 
-**Use Lovable**
+## Optimizations:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a99137b9-1899-48ee-beb4-aebe39f54a4e) and start prompting.
+Implemented debouncing for API calls to prevent excessive requests
 
-Changes made via Lovable will be committed automatically to this repo.
+Added caching for frequently used words to improve performance
 
-**Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Lessons learned:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+I learned how to create a custom API (Github link: https://github.com/vmvangils/Random_Word_Generator). I also learned how to create a Docker Container, which makes it so that I can press "start" and start the API. I also learned a bit more about Postman, mostly how to create a variable to add more security for a API key.
 
-Follow these steps:
+## Features:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Real-time WPM (Words Per Minute) calculation with live counter
+- Custom API integration for random word generation
+- History tracking of typing sessions
+- User-friendly interface with visual feedback
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Photo's of the project.
 
-# Step 3: Install the necessary dependencies.
-npm i
+<details>
+<summary>Click to view project images</summary>
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Main TypeTest Interface
+![TypeTest Interface](Images/TypeTest_Image.png)
+
+### History View #1
+![History View 1](Images/History_1.png)
+
+### History View #2
+![History View 2](Images/History_2.png)
+</details>
+
+## Prerequisites:
+
+Before running the project, make sure you have the following installed:
+- Node.js (v14 or higher)
+- npm (Node Package Manager)
+- XAMPP with MySQL
+- Docker (For the API container)
+- Postman (for running the API)
+
+## Installation Steps:
+
+**Database Setup:**
+  - Start XAMPP and ensure MySQL is running
+  - Import the database schema from the `backend/database` folder
+
+**API Setup:**
+  - Open Postman and import the API collection
+  - Download the code from https://github.com/vmvangils/Random_Word_Generator
+  - Set up your API key as an environment variable in Postman
+  - Start the API container using Docker
+
+**Project Setup:**
+  - Clone the repository
+  - Navigate to the project directory
+  - Run the installation commands for both backend and frontend
+
+## How to run the project?
+
+**To run the backend:**
+```bash
+cd backend
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a99137b9-1899-48ee-beb4-aebe39f54a4e) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+**To run the frontend:**
+```bash
+cd frontend
+npm install
+npm start
+```
