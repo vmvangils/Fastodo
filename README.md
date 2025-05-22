@@ -1,7 +1,5 @@
 
-# Final exam 
 # Vasco van Gils
-# 9018921@student.zadkine.nl
 
 **This is Fastodo, a task management application built with React and Supabase. This app helps users organize their tasks efficiently with folders, priorities, due dates and more.**
 
@@ -33,9 +31,6 @@ I learned how to integrate Supabase for authentication and database functionalit
 - Dark/light mode toggle
 
 ## Photo's of the project.
-
-<details>
-<summary>Click to view project images</summary>
 
 ### Main Dashboard
 ![Dashboard](Images/Dashboard.png)
